@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- O JavaScript vai trocar este título para "(5) Espelho" quando houver não lidas -->
+  <title>Espelho</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ========== BARRA SUPERIOR DA PÁGINA ========== -->
+  <header class="topo-app">
+    <div class="topo-app__esquerda">
+      <span class="topo-app__logo"><span data-icone="logo" aria-hidden="true"></span> Espelho</span>
+    </div>
+    <!-- Atendente logado no canto superior direito -->
+    <!-- Clicar no nome abre o "simular login" (teste de vários atendentes) -->
+    <div class="atendente-area">
+      <button
+        type="button"
+        class="atendente-logado"
+        id="botao-atendente"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="Trocar atendente (simulação)"
+      >
+        <span class="atendente-logado__nome" id="atendente-nome">Paulo</span>
+        <span class="avatar" id="atendente-avatar" aria-hidden="true">P</span>
+      </button>
+      <ul class="menu__lista menu-atendente" id="menu-atendente" role="menu" hidden></ul>
+    </div>
+  </header>
+
+  <div class="app">
+
+    <!-- ========== COLUNA DA ESQUERDA ========== -->
+    <aside class="barra-lateral">
+
+      <!-- ----- Painel 1: lista de conversas (aparece por padrão) ----- -->
+      <section class="painel-conversas" id="painel-conversas" aria-label="Conversas">
+
+        <div class="painel-conversas__topo">
+          <h2>Conversas <span class="contador-total" id="contador-total" aria-live="polite">0</span></h2>
+          <!-- Botão que abre a aba de contatos -->
+          <button type="button" id="botao-abrir-contatos" aria-label="Abrir contatos"><span data-icone="contatos" aria-hidden="true"></span> Contatos</button>
+        </div>
+
+        <div class="busca">
+          <label for="campo-busca" class="visualmente-oculto">Buscar conversa</label>
+          <span class="busca__icone"><span data-icone="buscar" aria-hidden="true"></span></span>
+          <input type="search" id="campo-busca" placeholder="Buscar nome, número ou mensagem" autocomplete="off">
+        </div>
+
+        <nav class="filtros" aria-label="Filtrar conversas">
+          <button type="button" class="filtro ativo" data-filtro="todas" aria-pressed="true">Todas</button>
+          <button type="button" class="filtro" data-filtro="nao-lidas" aria-pressed="false">Não lidas</button>
+          <button type="button" class="filtro" data-filtro="minhas" aria-pressed="false">Minhas</button>
+          <button type="button" class="filtro" data-filtro="fila" aria-pressed="false">Na fila</button>
+          <button type="button" class="filtro" data-filtro="resolvidas" aria-pressed="false">Resolvidas</button>
+          <button type="button" class="filtro" data-filtro="grupos" aria-pressed="false">Grupos</button>
+          <!-- Filtro por etiqueta: com a mesma cara dos filtros; opções criadas pelo JS -->
+          <label for="filtro-etiqueta" class="visualmente-oculto">Filtrar por etiqueta</label>
+          <select id="filtro-etiqueta" class="filtro filtro--select">
+            <option value="">Etiqueta ▾</option>
+          </select>
+        </nav>
+
+        <!-- O JavaScript cria cada item a partir do dados.json -->
+        <ul class="lista-conversas" id="lista-conversas"></ul>
+      </section>
+
+      <!-- ----- Painel 2: aba de contatos (escondida até clicar no botão) ----- -->
+      <section class="painel-contatos" id="painel-contatos" aria-label="Contatos" hidden>
+
+        <div class="painel-contatos__topo">
+          <button type="button" id="botao-fechar-contatos" aria-label="Voltar para conversas"><span data-icone="voltar" aria-hidden="true"></span></button>
+          <h2>Contatos</h2>
+        </div>
+
+        <div class="busca">
+          <label for="campo-busca-contatos" class="visualmente-oculto">Buscar contato</label>
+          <span class="busca__icone"><span data-icone="buscar" aria-hidden="true"></span></span>
+          <input type="search" id="campo-busca-contatos" placeholder="Buscar contato ou digitar número com DDD" autocomplete="off">
+        </div>
+
+        <!-- Clicar num contato abre (ou cria) a conversa com ele -->
+        <ul class="lista-contatos" id="lista-contatos"></ul>
+      </section>
+
+    </aside>
+
+    <!-- ========== COLUNA DO MEIO: CHAT ABERTO ========== -->
+    <main class="chat" id="chat">
+
+      <!-- Tela mostrada quando nenhuma conversa está aberta -->
+      <section class="chat__vazio" id="chat-vazio">
+        <div class="vazio">
+          <div class="vazio__icone" aria-hidden="true"><span data-icone="mensagem" aria-hidden="true"></span></div>
+          <h2 class="vazio__titulo">Nenhuma conversa aberta</h2>
+          <p class="vazio__texto">
+            Escolha uma conversa na lista ao lado ou inicie uma nova pelo botão <strong>Contatos</strong>.
+          </p>
+          <!-- Preenchido pelo JS: "5 mensagens não lidas · 1 conversa na fila" -->
+          <p class="vazio__resumo" id="vazio-resumo" aria-live="polite"></p>
+          <p class="vazio__dica"><kbd>Esc</kbd> fecha a conversa aberta</p>
+        </div>
+      </section>
+
+      <section class="chat__aberto" id="chat-aberto" hidden>
+
+        <header class="chat__topo">
+          <!-- Só aparece no celular: volta para a lista -->
+          <button type="button" class="chat__voltar" id="botao-voltar" aria-label="Voltar para conversas"><span data-icone="voltar" aria-hidden="true"></span></button>
+          <span class="avatar" id="chat-avatar" aria-hidden="true"></span>
+          <div class="chat__info">
+            <div class="chat__linha-nome">
+              <h1 class="chat__nome" id="chat-nome"></h1>
+              <div class="chat__etiquetas" id="chat-etiquetas"></div>
+            </div>
+            <p class="chat__detalhe" id="chat-detalhe"></p>
+          </div>
+
+          <!-- Menu escondido dos 3 pontos, no lado direito -->
+          <div class="menu">
+            <button
+              type="button"
+              class="menu__botao"
+              id="botao-menu"
+              aria-label="Mais opções"
+              aria-haspopup="true"
+              aria-expanded="false"
+            ><span data-icone="mais" aria-hidden="true"></span></button>
+
+            <ul class="menu__lista" id="menu-lista" role="menu" hidden>
+              <li role="none"><button type="button" role="menuitem" id="opcao-dados">Dados do contato</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-assumir">Assumir conversa</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-transferir">Transferir conversa</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-resolver">Marcar como resolvida</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-etiquetas">Etiquetas…</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-fixar">Fixar conversa</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-nao-lida">Marcar como não lida</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-arquivar">Arquivar conversa</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-excluir" class="perigo">Excluir conversa</button></li>
+              <!-- Ferramenta de teste: some quando houver WhatsApp de verdade -->
+              <li role="none" class="menu__separador"><button type="button" role="menuitem" id="opcao-simular" class="menu__teste">🧪 Simular mensagem do cliente</button></li>
+            </ul>
+          </div>
+        </header>
+
+        <!-- Mensagens de texto e de áudio, separadas por dia -->
+        <div class="chat__mensagens" id="chat-mensagens" aria-live="polite"></div>
+
+        <!-- Faixa de atendimento: "Ninguém está atendendo" ou "Carla está atendendo" -->
+        <div class="faixa" id="faixa-atendimento" hidden>
+          <span id="faixa-texto"></span>
+          <button type="button" id="botao-faixa-assumir">Assumir</button>
+        </div>
+
+        <!-- Barra "Editando mensagem" (aparece ao escolher Editar no menu da mensagem) -->
+        <div class="citacao-envio edicao-envio" id="edicao-envio" hidden>
+          <div class="citacao">
+            <div class="citacao__autor">✏️ Editando mensagem</div>
+            <div class="citacao__texto" id="edicao-envio-texto"></div>
+          </div>
+          <button type="button" id="botao-cancelar-edicao" aria-label="Cancelar edição"><span data-icone="fechar" aria-hidden="true"></span></button>
+        </div>
+
+        <!-- Barra "Respondendo a..." (aparece ao clicar em ↩ numa mensagem) -->
+        <div class="citacao-envio" id="citacao-envio" hidden>
+          <div class="citacao">
+            <div class="citacao__autor" id="citacao-envio-autor"></div>
+            <div class="citacao__texto" id="citacao-envio-texto"></div>
+          </div>
+          <button type="button" id="botao-cancelar-citacao" aria-label="Cancelar resposta"><span data-icone="fechar" aria-hidden="true"></span></button>
+        </div>
+
+        <!-- Sugestões de respostas rápidas (aparece ao digitar "/") -->
+        <ul class="sugestoes" id="sugestoes" role="listbox" aria-label="Respostas rápidas" hidden></ul>
+
+        <form class="chat__envio" id="form-envio">
+          <!-- Alterna entre mensagem para o cliente e nota interna (só a equipe vê) -->
+          <button
+            type="button"
+            class="botao-nota"
+            id="botao-nota"
+            aria-pressed="false"
+            title="Nota interna: só a equipe vê"
+            aria-label="Escrever nota interna"
+          ><span data-icone="nota" aria-hidden="true"></span></button>
+          <label for="campo-mensagem" class="visualmente-oculto">Digite uma mensagem</label>
+          <input type="text" id="campo-mensagem" placeholder="Digite uma mensagem ou / para respostas rápidas" autocomplete="off">
+
+          <!-- Campo vazio: mostra o microfone. Com texto: o JS troca para o botão Enviar -->
+          <button type="button" id="botao-audio" aria-label="Gravar áudio"><span data-icone="mic" aria-hidden="true"></span></button>
+          <button type="submit" id="botao-enviar" aria-label="Enviar mensagem" hidden><span data-icone="enviar" aria-hidden="true"></span></button>
+        </form>
+
+        <!-- Barra que aparece durante a gravação do áudio -->
+        <div class="gravacao" id="gravacao" hidden>
+          <span class="gravacao__ponto" aria-hidden="true"></span>
+          <span class="gravacao__tempo" id="gravacao-tempo">0:00</span>
+          <button type="button" id="botao-cancelar-audio">Cancelar</button>
+          <button type="button" id="botao-enviar-audio">Enviar áudio</button>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- ========== COLUNA DA DIREITA: DADOS DO CONTATO (escondida) ========== -->
+    <aside class="painel-dados" id="painel-dados" aria-label="Dados do contato" hidden>
+      <div class="painel-dados__topo">
+        <button type="button" id="botao-fechar-dados" aria-label="Fechar dados do contato"><span data-icone="fechar" aria-hidden="true"></span></button>
+        <h2>Dados do contato</h2>
+      </div>
+      <!-- O JS preenche conforme o tipo: contato (número, e-mail, empresa...)
+           ou grupo (lista de participantes) -->
+      <div class="painel-dados__conteudo" id="painel-dados-conteudo"></div>
+    </aside>
+
+  </div>
+
+  <div class="aviso" id="aviso" role="status" hidden></div>
+
+  <!-- Cartão que aparece ao parar o mouse sobre uma conversa da lista.
+       aria-hidden: é só um "zoom" de informação que já está na tela -->
+  <div class="cartao-previa" id="cartao-previa" aria-hidden="true" hidden></div>
+
+  <!-- Mini menu do botão direito nas conversas da lista.
+       Fica fora das colunas porque é posicionado onde o mouse estiver -->
+  <ul class="menu__lista menu-contexto" id="menu-contexto" role="menu" hidden>
+    <li role="none"><button type="button" role="menuitem" id="ctx-fixar">Fixar conversa</button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-lida">Marcar como não lida</button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-resolver">Marcar como resolvida</button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-etiquetas">Etiquetas…</button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-arquivar">Arquivar conversa</button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-excluir" class="perigo">Excluir conversa</button></li>
+  </ul>
+
+  <!-- Transferir conversa: os botões dos atendentes são criados pelo JS.
+       Cada um tem value = id do atendente, que vira o returnValue -->
+  <dialog class="confirmacao" id="dialogo-transferir">
+    <form method="dialog">
+      <h2 class="confirmacao__titulo">Transferir conversa</h2>
+      <p class="confirmacao__texto">Quem vai continuar este atendimento?</p>
+      <div class="transferir__lista" id="lista-transferir"></div>
+      <div class="confirmacao__botoes">
+        <button type="submit" value="cancelar">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Etiquetas da conversa: um checkbox por etiqueta (criados pelo JS).
+       Cada clique já salva; o botão só fecha a janela -->
+  <dialog class="confirmacao" id="dialogo-etiquetas">
+    <form method="dialog">
+      <h2 class="confirmacao__titulo">Etiquetas</h2>
+      <p class="confirmacao__texto" id="dialogo-etiquetas-texto"></p>
+      <div class="etiquetas__lista" id="lista-etiquetas"></div>
+      <!-- Erros do renomear aparecem aqui: o aviso flutuante ficaria atrás da janela -->
+      <p class="etiquetas__erro" id="etiquetas-erro" role="alert" hidden></p>
+      <div class="confirmacao__botoes">
+        <button type="submit" value="ok" class="confirmacao__ok">Concluir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Menu do botão direito em uma MENSAGEM (reaproveita o visual do menu da lista) -->
+  <ul class="menu__lista menu-contexto" id="menu-mensagem" role="menu" hidden>
+    <li role="none"><button type="button" role="menuitem" id="msg-responder">Responder</button></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-copiar">Copiar texto</button></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-editar">Editar</button></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-apagar" class="perigo">Apagar</button></li>
+  </ul>
+
+  <!-- Confirmação para apagar uma mensagem -->
+  <dialog class="confirmacao" id="dialogo-apagar">
+    <form method="dialog">
+      <h2 class="confirmacao__titulo">Apagar mensagem?</h2>
+      <p class="confirmacao__texto" id="dialogo-apagar-texto"></p>
+      <div class="confirmacao__botoes">
+        <button type="submit" value="cancelar">Cancelar</button>
+        <button type="submit" value="apagar" class="confirmacao__excluir">Apagar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Confirmação de exclusão.
+       <dialog> é um elemento nativo para janelas modais.
+       O form com method="dialog" fecha a janela sozinho e
+       guarda em returnValue o "value" do botão clicado -->
+  <dialog class="confirmacao" id="dialogo-excluir">
+    <form method="dialog">
+      <h2 class="confirmacao__titulo">Excluir conversa?</h2>
+      <p class="confirmacao__texto" id="dialogo-excluir-texto"></p>
+      <div class="confirmacao__botoes">
+        <button type="submit" value="cancelar">Cancelar</button>
+        <button type="submit" value="excluir" class="confirmacao__excluir">Excluir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="script.js"></script>
+</body>
+</html>
