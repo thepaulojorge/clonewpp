@@ -49,7 +49,9 @@ Comecei o Espelho depois de usar ferramentas de atendimento via WhatsApp com pro
 - **Simular login** como outro atendente (clique no nome, no topo) para ver a ferramenta pelos olhos de cada pessoa
 
 **Interface**
-- Tema escuro e tema claro, com a escolha salva no navegador
+- Tema escuro e tema claro
+- **Tudo fica salvo no navegador**: mensagens, áudios, conversas fixadas e arquivadas continuam lá depois de recarregar a página
+- Botão para restaurar os dados de exemplo (clique no seu nome, no topo)
 - Layout responsivo: no celular, uma tela por vez
 - Atalhos: `Esc` fecha menus, janelas e a conversa; setas e `Enter` nas respostas rápidas
 - Acessibilidade: navegação por teclado, `aria-label` nos botões de ícone, foco visível
@@ -64,6 +66,7 @@ Comecei o Espelho depois de usar ferramentas de atendimento via WhatsApp com pro
 - **Um ponto de entrada para mensagens recebidas:** `receberMensagem()` concentra as regras (reabrir conversa resolvida, marcar como lida se estiver aberta). Hoje quem chama é um simulador; com um backend, será o WebSocket, sem mudar as regras.
 - **Temas com variáveis CSS:** as variáveis têm nomes de **função** (`--destaque`, `--fundo-painel`), não de cor. O tema claro só troca os valores. Um script curto no `<head>` aplica o tema salvo antes da página aparecer, para a tela não piscar.
 - **Ícones SVG** num único objeto JS, com `currentColor`: mudam de cor junto com o tema.
+- **Persistência com `localStorage`:** o salvamento acontece dentro de `atualizarTela()`, por onde passam quase todas as mudanças, com *debounce* de 300 ms para salvar uma vez só depois de várias mudanças seguidas. Os dados salvos têm um número de versão: se a estrutura mudar no futuro, dados antigos incompatíveis são ignorados em vez de quebrar o app. Os áudios são convertidos em texto (*data URL*) com `FileReader` para poderem ser salvos.
 
 ## Como rodar no seu computador
 
@@ -89,14 +92,14 @@ favicon.svg  ícone da aba
 
 Esta é a versão de **front-end**, com dados de exemplo:
 
-- Nada é salvo: ao recarregar a página, as conversas voltam ao estado do `dados.json` (o tema escolhido é a exceção).
+- Os dados ficam salvos **só neste navegador**: outro computador, ou outro atendente, não vê as mesmas conversas. Compartilhar entre a equipe exige um backend.
 - As ações marcadas com 🧪 no menu são **simulações** para teste, como "Simular mensagem do cliente". A confirmação de leitura (✓✓ azul) também é simulada.
-- Os áudios gravados existem só enquanto a página está aberta.
+- O navegador reserva cerca de 5 MB por site, o que dá alguns minutos de áudio gravado no total.
 - O "login" é uma simulação para alternar entre atendentes.
 
 ## Próximos passos
 
-- [ ] Salvar os dados no navegador (`localStorage`)
+- [x] Salvar os dados no navegador (`localStorage`)
 - [ ] Backend em Node.js + Express para guardar conversas e arquivos de áudio
 - [ ] Mensagens em tempo real entre atendentes com WebSocket (Socket.io)
 - [ ] Login de verdade para cada atendente

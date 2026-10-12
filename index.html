@@ -16,7 +16,7 @@
        A imagem precisa do endereço completo: ajuste se o repositório tiver outro nome -->
   <meta property="og:title" content="Espelho: atendimento via WhatsApp para equipes">
   <meta property="og:description" content="Vários atendentes no mesmo número, filas, etiquetas, notas internas e áudio. Feito em HTML, CSS e JavaScript puro.">
-  <meta property="og:image" content="https://thepaulojorge.github.io/espelho/preview-escuro.png">
+  <meta property="og:image" content="https://thepaulojorge.github.io/clonewpp/preview-escuro.png">
   <meta property="og:type" content="website">
 
   <!-- Aplica o tema salvo ANTES de a página ser desenhada.
@@ -304,6 +304,21 @@
     <li role="none"><button type="button" role="menuitem" id="msg-editar">Editar</button></li>
     <li role="none"><button type="button" role="menuitem" id="msg-apagar" class="perigo">Apagar</button></li>
   </ul>
+
+  <!-- Confirmação para voltar aos dados de exemplo (apaga o que foi salvo) -->
+  <dialog class="confirmacao" id="dialogo-restaurar">
+    <form method="dialog">
+      <h2 class="confirmacao__titulo">Restaurar dados de exemplo?</h2>
+      <p class="confirmacao__texto">
+        Tudo o que foi feito aqui (mensagens enviadas, áudios, conversas fixadas, arquivadas,
+        etiquetas renomeadas...) será apagado deste navegador, e as conversas voltam ao início.
+      </p>
+      <div class="confirmacao__botoes">
+        <button type="submit" value="cancelar">Cancelar</button>
+        <button type="submit" value="restaurar" class="confirmacao__excluir">Restaurar</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Confirmação para apagar uma mensagem -->
   <dialog class="confirmacao" id="dialogo-apagar">

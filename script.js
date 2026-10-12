@@ -627,6 +627,7 @@ function atualizarResumoVazio(totalNaoLidas) {
 function atualizarTela() {
   renderizarLista();
   atualizarContadores();
+  salvarDados(); // quase toda mudança passa por aqui: é o lugar ideal para salvar
 }
 
 /* =========================================================
@@ -1588,6 +1589,7 @@ function simularLeituraDoCliente(conversa, mensagem) {
   setTimeout(() => {
     mensagem.lida = true;
     if (conversa.id === estado.conversaAbertaId) renderizarChat(conversa);
+    salvarDados();
   }, 3000);
 }
 
@@ -1981,6 +1983,16 @@ function abrirMenuAtendente() {
     elMenuAtendente.append(li);
   });
 
+  // Separado das opções de login: volta tudo ao estado inicial
+  const restaurar = criarElemento("li", "menu__separador");
+  restaurar.setAttribute("role", "none");
+  const botaoRestaurar = criarElemento("button", "menu__teste", "↺ Restaurar dados de exemplo");
+  botaoRestaurar.type = "button";
+  botaoRestaurar.setAttribute("role", "menuitem");
+  botaoRestaurar.dataset.acao = "restaurar";
+  restaurar.append(botaoRestaurar);
+  elMenuAtendente.append(restaurar);
+
   elMenuAtendente.hidden = false;
   elBotaoAtendente.setAttribute("aria-expanded", "true");
   elMenuAtendente.querySelector("button").focus();
@@ -2034,6 +2046,12 @@ elBotaoAtendente.addEventListener("click", () => {
 });
 
 elMenuAtendente.addEventListener("click", (evento) => {
+  if (evento.target.closest('[data-acao="restaurar"]')) {
+    fecharMenuAtendente();
+    document.getElementById("dialogo-restaurar").showModal();
+    return;
+  }
+
   const botao = evento.target.closest("[data-atendente-id]");
   if (!botao) return;
   fecharMenuAtendente();
@@ -2770,10 +2788,17 @@ function finalizarGravacao() {
     return;
   }
 
-  // Junta os pedaços num arquivo e cria um endereço temporário para ele
+  // Junta os pedaços num arquivo (Blob)
   const arquivo = new Blob(pedacos, { type: tipo });
-  const audioUrl = URL.createObjectURL(arquivo);
-  enviarAudio(conversaId, audioUrl, duracao);
+
+  /* Converte o arquivo em TEXTO ("data:audio/webm;base64,GkXfo..."). Antes usávamos
+     URL.createObjectURL, que cria um endereço temporário (blob:) que morre ao
+     recarregar a página. O texto pode ser guardado no localStorage junto com o resto.
+     O FileReader trabalha "em segundo plano" e avisa pelo evento load quando termina */
+  const leitor = new FileReader();
+  leitor.addEventListener("load", () => enviarAudio(conversaId, leitor.result, duracao));
+  leitor.addEventListener("error", () => mostrarAviso("Não foi possível processar o áudio"));
+  leitor.readAsDataURL(arquivo);
 }
 
 function enviarAudio(conversaId, audioUrl, duracao) {
@@ -2973,6 +2998,126 @@ elBotaoTema.addEventListener("click", () => {
 aplicarTema(temaAtual());
 
 /* =========================================================
+   SALVAR NO NAVEGADOR (localStorage)
+   O localStorage só guarda TEXTO. Por isso usamos JSON.stringify
+   para salvar (objeto -> texto) e JSON.parse para ler (texto -> objeto)
+   ========================================================= */
+const CHAVE_DADOS = "espelho-dados";
+/* Versão do "formato" dos dados salvos. Se um dia a estrutura mudar
+   (um campo novo obrigatório, por exemplo), aumentamos este número
+   e os dados antigos, incompatíveis, são ignorados em vez de quebrar o app */
+const VERSAO_DADOS = 1;
+
+let dadosDeExemplo = null; // o dados.json original, intacto
+let temporizadorSalvar = null;
+let avisouFalhaAoSalvar = false;
+
+/* Salvar com um pequeno atraso ("debounce"): se várias mudanças acontecem
+   em sequência (abrir conversa + marcar como lida + redesenhar...),
+   salvamos UMA vez só, 300ms depois da última */
+function salvarDados() {
+  clearTimeout(temporizadorSalvar);
+  temporizadorSalvar = setTimeout(salvarAgora, 300);
+}
+
+function salvarAgora() {
+  clearTimeout(temporizadorSalvar);
+  temporizadorSalvar = null;
+  if (!dadosDeExemplo) return; // ainda carregando: não há o que salvar
+
+  const pacote = {
+    versao: VERSAO_DADOS,
+    salvoEm: new Date().toISOString(),
+    conversas: estado.conversas,
+    contatos: estado.contatos,
+    etiquetas: estado.etiquetas,
+    atendenteLogadoId: estado.atendenteLogadoId,
+  };
+
+  try {
+    localStorage.setItem(CHAVE_DADOS, JSON.stringify(pacote));
+    avisouFalhaAoSalvar = false;
+  } catch (erro) {
+    // Acontece em aba anônima ou quando o espaço acaba (cerca de 5 MB por site;
+    // áudios longos ocupam bastante). Avisa uma vez só, para não incomodar
+    if (!avisouFalhaAoSalvar) {
+      mostrarAviso("Não foi possível salvar: o espaço do navegador pode estar cheio");
+      avisouFalhaAoSalvar = true;
+    }
+  }
+}
+
+// Fechou ou recarregou a aba antes dos 300ms? Salva na hora
+window.addEventListener("pagehide", () => {
+  if (temporizadorSalvar) salvarAgora();
+});
+
+function lerDadosSalvos() {
+  try {
+    const texto = localStorage.getItem(CHAVE_DADOS);
+    if (!texto) return null; // primeira visita
+
+    const salvos = JSON.parse(texto);
+    // Só aceita dados no formato que este código entende
+    if (salvos.versao !== VERSAO_DADOS || !Array.isArray(salvos.conversas)) return null;
+    return salvos;
+  } catch (erro) {
+    return null; // texto corrompido ou armazenamento bloqueado: começa do zero
+  }
+}
+
+function aplicarDadosSalvos(salvos, dados) {
+  estado.conversas = salvos.conversas;
+  estado.contatos = salvos.contatos || structuredClone(dados.contatos);
+
+  /* Etiquetas: a LISTA vem do dados.json (se um dia surgir uma etiqueta nova
+     no arquivo, ela aparece), mas o NOME das personalizáveis vem do que foi salvo */
+  estado.etiquetas = structuredClone(dados.etiquetas || []).map((etiqueta) => {
+    const salva = (salvos.etiquetas || []).find((e) => e.id === etiqueta.id);
+    return etiqueta.editavel && salva ? { ...etiqueta, nome: salva.nome } : etiqueta;
+  });
+
+  // Só aceita o atendente salvo se ele ainda existir no dados.json
+  if (estado.atendentes.some((a) => a.id === salvos.atendenteLogadoId)) {
+    estado.atendenteLogadoId = salvos.atendenteLogadoId;
+  }
+}
+
+function usarDadosDeExemplo(dados) {
+  estado.conversas = structuredClone(dados.conversas);
+  estado.contatos = structuredClone(dados.contatos);
+  estado.etiquetas = structuredClone(dados.etiquetas || []);
+  estado.atendenteLogadoId = "at1";
+}
+
+/* ---------- Restaurar dados de exemplo ---------- */
+function restaurarDadosDeExemplo() {
+  if (estado.conversaAbertaId) fecharConversa();
+  try {
+    localStorage.removeItem(CHAVE_DADOS);
+  } catch (erro) {
+    // armazenamento bloqueado: não havia nada salvo mesmo
+  }
+
+  usarDadosDeExemplo(dadosDeExemplo);
+  estado.rascunhos = {};
+  estado.filtroEtiqueta = "";
+  estado.vendoArquivadas = false;
+  elFiltroEtiqueta.classList.remove("ativo");
+
+  atualizarTopoAtendente();
+  preencherFiltroEtiquetas();
+  atualizarTela();
+  mostrarAviso("Dados de exemplo restaurados");
+}
+
+document.getElementById("dialogo-restaurar").addEventListener("close", (evento) => {
+  const dialogo = evento.target;
+  if (dialogo.returnValue === "restaurar") restaurarDadosDeExemplo();
+  dialogo.returnValue = "";
+});
+
+/* =========================================================
    CARREGAR OS DADOS E INICIAR
    ========================================================= */
 async function carregarDados() {
@@ -2981,11 +3126,22 @@ async function carregarDados() {
     if (!resposta.ok) throw new Error(`Erro ${resposta.status}`);
 
     const dados = await resposta.json();
+    dadosDeExemplo = dados; // guardados para o "Restaurar dados de exemplo"
+
+    // Atendentes e respostas rápidas sempre vêm do arquivo (não são editados na tela)
     estado.atendentes = dados.atendentes;
-    estado.contatos = dados.contatos;
-    estado.conversas = dados.conversas;
     estado.respostasRapidas = dados.respostasRapidas || [];
-    estado.etiquetas = dados.etiquetas || [];
+
+    const salvos = lerDadosSalvos();
+    if (salvos) {
+      // Já usou o app neste navegador: continua de onde parou
+      aplicarDadosSalvos(salvos, dados);
+    } else {
+      // Primeira visita: começa com os exemplos.
+      // structuredClone faz uma CÓPIA PROFUNDA: assim mexer no estado
+      // não altera dadosDeExemplo (que precisa ficar intacto para o "Restaurar")
+      usarDadosDeExemplo(dados);
+    }
 
     atualizarTopoAtendente();
     preencherFiltroEtiquetas();
