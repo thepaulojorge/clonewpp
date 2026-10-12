@@ -2,7 +2,7 @@
 
 Painel de atendimento via WhatsApp pensado para **equipes**: vários atendentes no mesmo número, com fila, transferência, notas internas e etiquetas. Feito em **HTML, CSS e JavaScript puro**, sem frameworks.
 
-**[Ver o projeto funcionando](https://thepaulojorge.github.io/espelho/)**
+**[Ver o projeto funcionando](https://thepaulojorge.github.io/clonewpp/)**
 
 ![Espelho no tema escuro](preview-escuro.png)
 
