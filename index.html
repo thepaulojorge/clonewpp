@@ -5,6 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- O JavaScript vai trocar este título para "(5) Espelho" quando houver não lidas -->
   <title>Espelho</title>
+  <meta name="description" content="Espelho: painel de atendimento via WhatsApp para equipes, com vários atendentes no mesmo número. Projeto de portfólio em HTML, CSS e JavaScript puro.">
+
+  <!-- Ícone da aba -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- Cor da barra do navegador no celular (o JS atualiza ao trocar o tema) -->
+  <meta name="theme-color" content="#000000">
+
+  <!-- Prévia quando o link é compartilhado (WhatsApp, LinkedIn...).
+       A imagem precisa do endereço completo: ajuste se o repositório tiver outro nome -->
+  <meta property="og:title" content="Espelho: atendimento via WhatsApp para equipes">
+  <meta property="og:description" content="Vários atendentes no mesmo número, filas, etiquetas, notas internas e áudio. Feito em HTML, CSS e JavaScript puro.">
+  <meta property="og:image" content="https://thepaulojorge.github.io/espelho/preview-escuro.png">
+  <meta property="og:type" content="website">
+
+  <!-- Aplica o tema salvo ANTES de a página ser desenhada.
+       Se isso ficasse no script.js (que carrega no fim), quem usa o tema
+       claro veria a tela preta "piscar" a cada visita -->
+  <script>
+    try {
+      if (localStorage.getItem("espelho-tema") === "claro") {
+        document.documentElement.dataset.tema = "claro";
+      }
+    } catch (erro) {
+      // Navegação anônima ou armazenamento bloqueado: segue no tema preto
+    }
+  </script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,21 +41,26 @@
     <div class="topo-app__esquerda">
       <span class="topo-app__logo"><span data-icone="logo" aria-hidden="true"></span> Espelho</span>
     </div>
-    <!-- Atendente logado no canto superior direito -->
-    <!-- Clicar no nome abre o "simular login" (teste de vários atendentes) -->
-    <div class="atendente-area">
-      <button
-        type="button"
-        class="atendente-logado"
-        id="botao-atendente"
-        aria-haspopup="true"
-        aria-expanded="false"
-        aria-label="Trocar atendente (simulação)"
-      >
-        <span class="atendente-logado__nome" id="atendente-nome">Paulo</span>
-        <span class="avatar" id="atendente-avatar" aria-hidden="true">P</span>
-      </button>
-      <ul class="menu__lista menu-atendente" id="menu-atendente" role="menu" hidden></ul>
+    <!-- Lado direito: botão de tema + atendente logado -->
+    <div class="topo-app__direita">
+      <!-- Alterna entre o tema preto e o claro (o ícone é trocado pelo JS) -->
+      <button type="button" class="botao-tema" id="botao-tema" aria-label="Ativar tema claro"></button>
+
+      <!-- Clicar no nome abre o "simular login" (teste de vários atendentes) -->
+      <div class="atendente-area">
+        <button
+          type="button"
+          class="atendente-logado"
+          id="botao-atendente"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-label="Trocar atendente (simulação)"
+        >
+          <span class="atendente-logado__nome" id="atendente-nome">Paulo</span>
+          <span class="avatar" id="atendente-avatar" aria-hidden="true">P</span>
+        </button>
+        <ul class="menu__lista menu-atendente" id="menu-atendente" role="menu" hidden></ul>
+      </div>
     </div>
   </header>
 
