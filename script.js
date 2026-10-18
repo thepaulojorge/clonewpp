@@ -159,6 +159,15 @@ const ICONES = {
   pino: '<path d="M12 16.5V21M8.5 3.5h7l-1 6 3.5 3.5v2h-12v-2L9.5 9.5z"/>',
   arquivo: '<rect x="3" y="4" width="18" height="4.5" rx="1"/><path d="M5 8.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19V8.5M10 12.5h4"/>',
   lapis: '<path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-4-4L4 16z"/><path d="m14 6 4 4"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
+  envelope: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
+  assumir: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="m16 11 2 2 4-4"/>',
+  transferir: '<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/>',
+  resolver: '<circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  etiqueta: '<path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.4 1.4 0 0 1 0 2l-7.1 7.1a1.4 1.4 0 0 1-2 0z"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/>',
+  lixeira: '<path d="M4 6.5h16M9.5 6.5v-2h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6M14 10.5v6"/>',
+  copiar: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h3.5"/>',
+  frasco: '<path d="M9.5 3.5h5M10.5 3.5v6L5 18.5a1.5 1.5 0 0 0 1.3 2.2h11.4a1.5 1.5 0 0 0 1.3-2.2L13.5 9.5v-6M7.5 14.5h9"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
 };
@@ -181,6 +190,37 @@ function preencherIcones() {
 }
 
 preencherIcones();
+
+/* ---------- Ajudantes dos menus ----------
+   Cada opção tem duas partes: o ícone e o <span class="menu__texto">.
+   Trocar botao.textContent apagaria o ícone junto, por isso
+   mudamos só o texto do span */
+function rotular(botao, texto) {
+  botao.querySelector(".menu__texto").textContent = texto;
+}
+
+/* Esconde divisórias que ficariam "sobrando": no começo ou no fim do menu,
+   ou duas seguidas. Acontece quando um grupo inteiro fica escondido
+   (ex.: numa mensagem do cliente, "Apagar" some e a linha antes dele também) */
+function ajustarDivisorias(menu) {
+  let temItemAntes = false; // apareceu alguma opção desde a última divisória?
+  let ultimaDivisoria = null;
+
+  for (const li of menu.children) {
+    if (li.classList.contains("menu__divisoria")) {
+      li.hidden = !temItemAntes; // só aparece se tiver opção ANTES dela
+      if (!li.hidden) {
+        ultimaDivisoria = li;
+        temItemAntes = false;
+      }
+    } else if (!li.hidden) {
+      temItemAntes = true;
+      ultimaDivisoria = null; // tem opção DEPOIS dela: pode ficar
+    }
+  }
+  // Sobrou uma divisória sem nenhuma opção depois? Esconde
+  if (ultimaDivisoria) ultimaDivisoria.hidden = true;
+}
 
 function buscarContato(id) {
   return estado.contatos.find((contato) => contato.id === id);
@@ -205,6 +245,29 @@ function iniciais(nome) {
     .slice(0, 2)
     .map((parte) => parte[0].toUpperCase())
     .join("");
+}
+
+/* ---------- Cor do avatar a partir do nome ----------
+   Um "hash": transforma o texto num número. O mesmo nome dá SEMPRE
+   o mesmo número, então "Mariana Souza" tem sempre a mesma cor,
+   sem precisar guardar a cor em lugar nenhum.
+   - Para cada letra, multiplica o total por 31 e soma o código da letra
+     (31 é um número primo: espalha bem os resultados)
+   - ">>> 0" mantém o número inteiro e positivo (32 bits)
+   - "% 18" escolhe uma de 18 "faixas", e "* 20" vira o tom: 0°, 20°, 40°... 340°
+     (tons de 20 em 20 graus são fáceis de diferenciar a olho) */
+function matizDoNome(nome) {
+  let numero = 0;
+  for (const letra of normalizar(nome)) {
+    numero = (numero * 31 + letra.codePointAt(0)) >>> 0;
+  }
+  return (numero % 18) * 20;
+}
+
+// Aplica a cor no avatar: o CSS (.avatar--cor) monta a cor com o tom e o tema
+function pintarAvatar(elemento, nome) {
+  elemento.style.setProperty("--avatar-matiz", matizDoNome(nome));
+  elemento.classList.add("avatar--cor");
 }
 
 // 14 -> "0:14" | 75 -> "1:15"
@@ -243,23 +306,47 @@ function contarTotalNaoLidas() {
   );
 }
 
-/* ---------- Datas ----------
-   Hoje -> "14:20" | Ontem -> "Ontem" | Antes -> "08/10/2026" */
+/* ---------- Datas "humanas", como no WhatsApp ----------
+   Lista:      hoje "14:20" | ontem "Ontem" | até 6 dias "Sábado" | este ano "08/10" | antes "08/10/25"
+   Separador:  "Hoje" | "Ontem" | "Segunda-feira" | "8 de outubro" | "8 de outubro de 2025" */
 function mesmoDia(dataA, dataB) {
   return dataA.toDateString() === dataB.toDateString();
 }
 
+/* Quantos dias de CALENDÁRIO se passaram (não horas!).
+   Uma mensagem de ontem às 23h, vista hoje à 1h, tem só 2 horas,
+   mas é de "Ontem". Por isso comparamos as meias-noites dos dois dias */
+function diasAtras(data) {
+  const meiaNoiteHoje = new Date();
+  meiaNoiteHoje.setHours(0, 0, 0, 0);
+  const meiaNoiteDaData = new Date(data);
+  meiaNoiteDaData.setHours(0, 0, 0, 0);
+  // Math.round: em dias de horário de verão, um "dia" pode ter 23 ou 25 horas
+  return Math.round((meiaNoiteHoje - meiaNoiteDaData) / (24 * 60 * 60 * 1000));
+}
+
+// "sábado" -> "Sábado"
+function primeiraMaiuscula(texto) {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 function formatarHoraLista(iso) {
   const data = new Date(iso);
-  const hoje = new Date();
-  const ontem = new Date();
-  ontem.setDate(hoje.getDate() - 1);
+  const dias = diasAtras(data);
 
-  if (mesmoDia(data, hoje)) {
+  if (dias === 0) {
     return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   }
-  if (mesmoDia(data, ontem)) return "Ontem";
-  return data.toLocaleDateString("pt-BR");
+  if (dias === 1) return "Ontem";
+  if (dias > 1 && dias < 7) {
+    // Na lista o espaço é curto: "Segunda-feira" vira "Segunda"
+    const semana = data.toLocaleDateString("pt-BR", { weekday: "long" }).replace("-feira", "");
+    return primeiraMaiuscula(semana);
+  }
+  if (data.getFullYear() === new Date().getFullYear()) {
+    return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }); // "08/10"
+  }
+  return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }); // "08/10/25"
 }
 
 /* ---------- Prévia da última mensagem ----------
@@ -457,9 +544,10 @@ function criarItemConversa(conversa) {
   }
   if (conversa.id === estado.conversaAbertaId) li.classList.add("conversa--ativa");
 
-  // Avatar (quadrado para grupo, redondo para contato)
+  // Avatar (quadrado para grupo, redondo para contato), com a cor do nome
   const avatar = criarElemento("span", "avatar", iniciais(nome));
   if (conversa.tipo === "grupo") avatar.classList.add("avatar--grupo");
+  pintarAvatar(avatar, nome);
   avatar.setAttribute("aria-hidden", "true");
 
   // Nome e prévia
@@ -720,6 +808,7 @@ function renderizarTopoChat(conversa) {
 
   elChatAvatar.textContent = iniciais(nome);
   elChatAvatar.classList.toggle("avatar--grupo", conversa.tipo === "grupo");
+  pintarAvatar(elChatAvatar, nome);
   elChatNome.textContent = nome;
 
   const atendente = buscarAtendente(conversa.atendenteId);
@@ -740,17 +829,21 @@ function renderizarTopoChat(conversa) {
   });
 }
 
-/* ---------- Separador de dia ----------
-   "Hoje", "Ontem" ou a data por extenso */
+/* ---------- Separador de dia (no chat e no cartão de prévia) ----------
+   Aqui tem espaço: o dia da semana vai completo ("Segunda-feira") */
 function formatarDia(iso) {
   const data = new Date(iso);
-  const hoje = new Date();
-  const ontem = new Date();
-  ontem.setDate(hoje.getDate() - 1);
+  const dias = diasAtras(data);
 
-  if (mesmoDia(data, hoje)) return "Hoje";
-  if (mesmoDia(data, ontem)) return "Ontem";
-  return data.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+  if (dias === 0) return "Hoje";
+  if (dias === 1) return "Ontem";
+  if (dias > 1 && dias < 7) {
+    return primeiraMaiuscula(data.toLocaleDateString("pt-BR", { weekday: "long" }));
+  }
+  // O ano só aparece quando não é o ano atual
+  const opcoes = { day: "numeric", month: "long" };
+  if (data.getFullYear() !== new Date().getFullYear()) opcoes.year = "numeric";
+  return data.toLocaleDateString("pt-BR", opcoes);
 }
 
 function formatarHoraMensagem(iso) {
@@ -990,13 +1083,14 @@ function abrirMenu() {
   if (!conversa) return;
 
   // Os textos mudam conforme a situação da conversa
-  elOpcaoFixar.textContent = conversa.fixadaEm ? "Desafixar conversa" : "Fixar conversa";
-  elOpcaoDados.textContent = conversa.tipo === "grupo" ? "Dados do grupo" : "Dados do contato";
-  elOpcaoArquivar.textContent = conversa.arquivada ? "Desarquivar conversa" : "Arquivar conversa";
+  rotular(elOpcaoFixar, conversa.fixadaEm ? "Desafixar conversa" : "Fixar conversa");
+  rotular(elOpcaoDados, conversa.tipo === "grupo" ? "Dados do grupo" : "Dados do contato");
+  rotular(elOpcaoArquivar, conversa.arquivada ? "Desarquivar conversa" : "Arquivar conversa");
   // "Assumir" some se a conversa já é sua
   elOpcaoAssumir.parentElement.hidden = conversa.atendenteId === estado.atendenteLogadoId;
-  elOpcaoResolver.textContent = estaResolvida(conversa) ? "Reabrir conversa" : "Marcar como resolvida";
+  rotular(elOpcaoResolver, estaResolvida(conversa) ? "Reabrir conversa" : "Marcar como resolvida");
   elOpcaoFixar.parentElement.hidden = Boolean(conversa.arquivada); // arquivada não pode ser fixada
+  ajustarDivisorias(elMenuLista);
 
   elMenuLista.hidden = false;
   elBotaoMenu.setAttribute("aria-expanded", "true");
@@ -1059,6 +1153,7 @@ function renderizarPainelDados(conversa) {
   // Cabeçalho: avatar grande + nome
   const avatar = criarElemento("span", "avatar", iniciais(nome));
   if (conversa.tipo === "grupo") avatar.classList.add("avatar--grupo");
+  pintarAvatar(avatar, nome);
   avatar.setAttribute("aria-hidden", "true");
   elPainelDadosConteudo.append(avatar, criarElemento("h3", "painel-dados__nome", nome));
 
@@ -1200,11 +1295,12 @@ function abrirMenuContexto(conversa, x, y) {
   fecharMenu(); // não deixa dois menus abertos ao mesmo tempo
 
   // Textos conforme a situação da conversa
-  elCtxFixar.textContent = conversa.fixadaEm ? "Desafixar conversa" : "Fixar conversa";
+  rotular(elCtxFixar, conversa.fixadaEm ? "Desafixar conversa" : "Fixar conversa");
   elCtxFixar.parentElement.hidden = Boolean(conversa.arquivada); // arquivada não pode ser fixada
-  elCtxLida.textContent = temAlgoNaoLido(conversa) ? "Marcar como lida" : "Marcar como não lida";
-  elCtxArquivar.textContent = conversa.arquivada ? "Desarquivar conversa" : "Arquivar conversa";
-  elCtxResolver.textContent = estaResolvida(conversa) ? "Reabrir conversa" : "Marcar como resolvida";
+  rotular(elCtxLida, temAlgoNaoLido(conversa) ? "Marcar como lida" : "Marcar como não lida");
+  rotular(elCtxArquivar, conversa.arquivada ? "Desarquivar conversa" : "Arquivar conversa");
+  rotular(elCtxResolver, estaResolvida(conversa) ? "Reabrir conversa" : "Marcar como resolvida");
+  ajustarDivisorias(elMenuContexto);
 
   // Mostra primeiro, para conseguir medir o tamanho do menu
   elMenuContexto.hidden = false;
@@ -1365,6 +1461,7 @@ function criarItemContato({ id, nome, detalhe, novoNumero }) {
 
   const avatar = criarElemento("span", "avatar", novoNumero ? "+" : iniciais(nome));
   avatar.setAttribute("aria-hidden", "true");
+  if (!novoNumero) pintarAvatar(avatar, nome);
 
   const info = criarElemento("div", "contato__info");
   info.append(
@@ -1885,6 +1982,7 @@ function abrirDialogoTransferir() {
       botao.value = atendente.id; // vira o returnValue do dialog
       const avatar = criarElemento("span", "avatar", iniciais(atendente.nome));
       avatar.setAttribute("aria-hidden", "true");
+      pintarAvatar(avatar, atendente.nome);
       const rotulo = atendente.id === estado.atendenteLogadoId ? `${atendente.nome} (você)` : atendente.nome;
       botao.append(avatar, criarElemento("span", "", rotulo));
       elListaTransferir.append(botao);
@@ -1953,9 +2051,13 @@ function definirModoNota(ligado) {
   estado.modoNota = ligado;
   elFormEnvio.classList.toggle("chat__envio--nota", ligado);
   elBotaoNota.setAttribute("aria-pressed", ligado);
-  elCampoMensagem.placeholder = ligado
-    ? "Nota interna: só a equipe vê"
-    : "Digite uma mensagem ou / para respostas rápidas";
+  // Tela estreita (celular): textos curtos, senão o placeholder aparece cortado
+  const estreita = window.matchMedia?.("(max-width: 768px)").matches;
+  if (ligado) {
+    elCampoMensagem.placeholder = estreita ? "Nota interna" : "Nota interna: só a equipe vê";
+  } else {
+    elCampoMensagem.placeholder = estreita ? "Mensagem ou / atalho" : "Digite uma mensagem ou / para respostas rápidas";
+  }
 }
 
 /* ---------- Simular login (troca de atendente) ----------
@@ -1965,6 +2067,7 @@ function atualizarTopoAtendente() {
   const nome = nomeLogado();
   elAtendenteNome.textContent = nome;
   elAtendenteAvatar.textContent = iniciais(nome);
+  pintarAvatar(elAtendenteAvatar, nome); // trocar de atendente troca a cor também
 }
 
 function abrirMenuAtendente() {
@@ -2404,8 +2507,10 @@ function abrirMenuMensagem(msg, x, y) {
   elMsgCopiar.parentElement.hidden = !temTexto;
   elMsgEditar.parentElement.hidden = !podeEditar(msg);
   elMsgApagar.parentElement.hidden = !podeApagar(msg);
+  ajustarDivisorias(elMenuMensagem);
 
-  const visiveis = elMenuMensagem.querySelectorAll("li:not([hidden])");
+  // Só os <li> visíveis que têm botão (as divisórias também são <li>)
+  const visiveis = elMenuMensagem.querySelectorAll("li:not([hidden]) > button");
   if (visiveis.length === 0) return; // nada a oferecer (ex.: mensagem apagada de outra pessoa)
 
   elMenuMensagem.hidden = false;
@@ -2416,7 +2521,7 @@ function abrirMenuMensagem(msg, x, y) {
   elMenuMensagem.style.left = `${posX}px`;
   elMenuMensagem.style.top = `${posY}px`;
 
-  visiveis[0].querySelector("button").focus();
+  visiveis[0].focus(); // agora visiveis já são os botões
 }
 
 function fecharMenuMensagem() {
@@ -2855,6 +2960,7 @@ function montarCartaoPrevia(conversa) {
   const topo = criarElemento("div", "cartao-previa__topo");
   const avatar = criarElemento("span", "avatar", iniciais(nome));
   if (conversa.tipo === "grupo") avatar.classList.add("avatar--grupo");
+  pintarAvatar(avatar, nome);
   const textos = criarElemento("div", "cartao-previa__textos");
   const detalhe =
     conversa.tipo === "grupo"
@@ -2997,6 +3103,9 @@ elBotaoTema.addEventListener("click", () => {
 // O script do <head> já aplicou o tema salvo; aqui só acertamos o ícone do botão
 aplicarTema(temaAtual());
 
+// Texto do campo de mensagem conforme o tamanho da tela (celular = mais curto)
+definirModoNota(false);
+
 /* =========================================================
    SALVAR NO NAVEGADOR (localStorage)
    O localStorage só guarda TEXTO. Por isso usamos JSON.stringify
@@ -3088,6 +3197,44 @@ function usarDadosDeExemplo(dados) {
   estado.contatos = structuredClone(dados.contatos);
   estado.etiquetas = structuredClone(dados.etiquetas || []);
   estado.atendenteLogadoId = "at1";
+  trazerDatasParaPerto(estado.conversas);
+}
+
+/* As datas do dados.json são fixas (outubro de 2026). Com o tempo, os
+   exemplos ficariam "velhos" e quem visita o portfólio veria só datas
+   antigas. Então empurramos TODAS as datas a mesma quantidade de dias,
+   até a mensagem mais recente cair em hoje (ou ontem, se cair no futuro).
+   A distância entre as mensagens continua igual, só muda o "quando".
+   Só vale para os exemplos: dados salvos pelo usuário não são mexidos */
+function trazerDatasParaPerto(conversas) {
+  const campos = ["horario", "editadaEm", "apagadaEm"];
+  const todasAsMensagens = conversas.flatMap((c) => c.mensagens);
+  if (todasAsMensagens.length === 0) return;
+
+  // A mais recente (comparando os números de milissegundos)
+  const maisRecente = new Date(Math.max(...todasAsMensagens.map((m) => new Date(m.horario))));
+
+  let deslocamento = diasAtras(maisRecente);
+  const agora = new Date();
+  const comoFicaria = new Date(maisRecente);
+  comoFicaria.setDate(comoFicaria.getDate() + deslocamento);
+  if (comoFicaria > agora) deslocamento -= 1; // não pode ficar no futuro: vira "ontem"
+  if (deslocamento <= 0) return;
+
+  const empurrar = (iso) => {
+    const data = new Date(iso);
+    data.setDate(data.getDate() + deslocamento);
+    return data.toISOString();
+  };
+
+  conversas.forEach((conversa) => {
+    if (conversa.fixadaEm) conversa.fixadaEm = empurrar(conversa.fixadaEm);
+    conversa.mensagens.forEach((msg) => {
+      campos.forEach((campo) => {
+        if (msg[campo]) msg[campo] = empurrar(msg[campo]);
+      });
+    });
+  });
 }
 
 /* ---------- Restaurar dados de exemplo ---------- */

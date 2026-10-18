@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- viewport-fit=cover: libera o uso da "área segura" do iPhone no CSS (env(safe-area-inset-*)) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <!-- O JavaScript vai trocar este título para "(5) Espelho" quando houver não lidas -->
   <title>Espelho</title>
   <meta name="description" content="Espelho: painel de atendimento via WhatsApp para equipes, com vários atendentes no mesmo número. Projeto de portfólio em HTML, CSS e JavaScript puro.">
@@ -165,17 +166,23 @@
             ><span data-icone="mais" aria-hidden="true"></span></button>
 
             <ul class="menu__lista" id="menu-lista" role="menu" hidden>
-              <li role="none"><button type="button" role="menuitem" id="opcao-dados">Dados do contato</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-assumir">Assumir conversa</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-transferir">Transferir conversa</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-resolver">Marcar como resolvida</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-etiquetas">Etiquetas…</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-fixar">Fixar conversa</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-nao-lida">Marcar como não lida</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-arquivar">Arquivar conversa</button></li>
-              <li role="none"><button type="button" role="menuitem" id="opcao-excluir" class="perigo">Excluir conversa</button></li>
+              <!-- Grupo 1: a conversa -->
+              <li role="none"><button type="button" role="menuitem" id="opcao-dados"><span data-icone="info" aria-hidden="true"></span><span class="menu__texto">Dados do contato</span></button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-fixar"><span data-icone="pino" aria-hidden="true"></span><span class="menu__texto">Fixar conversa</span></button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-nao-lida"><span data-icone="envelope" aria-hidden="true"></span><span class="menu__texto">Marcar como não lida</span></button></li>
+              <li role="separator" class="menu__divisoria"></li>
+              <!-- Grupo 2: o atendimento -->
+              <li role="none"><button type="button" role="menuitem" id="opcao-assumir"><span data-icone="assumir" aria-hidden="true"></span><span class="menu__texto">Assumir conversa</span></button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-transferir"><span data-icone="transferir" aria-hidden="true"></span><span class="menu__texto">Transferir conversa</span></button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-resolver"><span data-icone="resolver" aria-hidden="true"></span><span class="menu__texto">Marcar como resolvida</span></button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-etiquetas"><span data-icone="etiqueta" aria-hidden="true"></span><span class="menu__texto">Etiquetas…</span></button></li>
+              <li role="separator" class="menu__divisoria"></li>
+              <!-- Grupo 3: tirar da lista -->
+              <li role="none"><button type="button" role="menuitem" id="opcao-arquivar"><span data-icone="arquivo" aria-hidden="true"></span><span class="menu__texto">Arquivar conversa</span></button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-excluir" class="perigo"><span data-icone="lixeira" aria-hidden="true"></span><span class="menu__texto">Excluir conversa</span></button></li>
+              <li role="separator" class="menu__divisoria"></li>
               <!-- Ferramenta de teste: some quando houver WhatsApp de verdade -->
-              <li role="none" class="menu__separador"><button type="button" role="menuitem" id="opcao-simular" class="menu__teste">🧪 Simular mensagem do cliente</button></li>
+              <li role="none"><button type="button" role="menuitem" id="opcao-simular" class="menu__teste"><span data-icone="frasco" aria-hidden="true"></span><span class="menu__texto">Simular mensagem do cliente</span></button></li>
             </ul>
           </div>
         </header>
@@ -261,12 +268,14 @@
   <!-- Mini menu do botão direito nas conversas da lista.
        Fica fora das colunas porque é posicionado onde o mouse estiver -->
   <ul class="menu__lista menu-contexto" id="menu-contexto" role="menu" hidden>
-    <li role="none"><button type="button" role="menuitem" id="ctx-fixar">Fixar conversa</button></li>
-    <li role="none"><button type="button" role="menuitem" id="ctx-lida">Marcar como não lida</button></li>
-    <li role="none"><button type="button" role="menuitem" id="ctx-resolver">Marcar como resolvida</button></li>
-    <li role="none"><button type="button" role="menuitem" id="ctx-etiquetas">Etiquetas…</button></li>
-    <li role="none"><button type="button" role="menuitem" id="ctx-arquivar">Arquivar conversa</button></li>
-    <li role="none"><button type="button" role="menuitem" id="ctx-excluir" class="perigo">Excluir conversa</button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-fixar"><span data-icone="pino" aria-hidden="true"></span><span class="menu__texto">Fixar conversa</span></button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-lida"><span data-icone="envelope" aria-hidden="true"></span><span class="menu__texto">Marcar como não lida</span></button></li>
+    <li role="separator" class="menu__divisoria"></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-resolver"><span data-icone="resolver" aria-hidden="true"></span><span class="menu__texto">Marcar como resolvida</span></button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-etiquetas"><span data-icone="etiqueta" aria-hidden="true"></span><span class="menu__texto">Etiquetas…</span></button></li>
+    <li role="separator" class="menu__divisoria"></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-arquivar"><span data-icone="arquivo" aria-hidden="true"></span><span class="menu__texto">Arquivar conversa</span></button></li>
+    <li role="none"><button type="button" role="menuitem" id="ctx-excluir" class="perigo"><span data-icone="lixeira" aria-hidden="true"></span><span class="menu__texto">Excluir conversa</span></button></li>
   </ul>
 
   <!-- Transferir conversa: os botões dos atendentes são criados pelo JS.
@@ -299,10 +308,11 @@
 
   <!-- Menu do botão direito em uma MENSAGEM (reaproveita o visual do menu da lista) -->
   <ul class="menu__lista menu-contexto" id="menu-mensagem" role="menu" hidden>
-    <li role="none"><button type="button" role="menuitem" id="msg-responder">Responder</button></li>
-    <li role="none"><button type="button" role="menuitem" id="msg-copiar">Copiar texto</button></li>
-    <li role="none"><button type="button" role="menuitem" id="msg-editar">Editar</button></li>
-    <li role="none"><button type="button" role="menuitem" id="msg-apagar" class="perigo">Apagar</button></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-responder"><span data-icone="responder" aria-hidden="true"></span><span class="menu__texto">Responder</span></button></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-copiar"><span data-icone="copiar" aria-hidden="true"></span><span class="menu__texto">Copiar texto</span></button></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-editar"><span data-icone="lapis" aria-hidden="true"></span><span class="menu__texto">Editar</span></button></li>
+    <li role="separator" class="menu__divisoria"></li>
+    <li role="none"><button type="button" role="menuitem" id="msg-apagar" class="perigo"><span data-icone="lixeira" aria-hidden="true"></span><span class="menu__texto">Apagar</span></button></li>
   </ul>
 
   <!-- Confirmação para voltar aos dados de exemplo (apaga o que foi salvo) -->
