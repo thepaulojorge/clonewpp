@@ -44,6 +44,12 @@
     </div>
     <!-- Lado direito: botão de tema + atendente logado -->
     <div class="topo-app__direita">
+      <!-- Painel de supervisão: o JS só mostra este botão para supervisão e diretoria -->
+      <button type="button" class="botao-supervisao" id="botao-supervisao" hidden>
+        <span data-icone="escudo" aria-hidden="true"></span>
+        <span class="botao-supervisao__texto">Supervisão</span>
+      </button>
+
       <!-- Alterna entre o tema preto e o claro (o ícone é trocado pelo JS) -->
       <button type="button" class="botao-tema" id="botao-tema" aria-label="Ativar tema claro"></button>
 
@@ -258,6 +264,64 @@
     </aside>
 
   </div>
+
+  <!-- ========== PAINEL DE SUPERVISÃO (substitui as conversas quando aberto) ========== -->
+  <section class="supervisao" id="painel-supervisao" aria-labelledby="supervisao-titulo" hidden>
+
+    <header class="supervisao__topo">
+      <button type="button" class="supervisao__voltar" id="botao-fechar-supervisao" aria-label="Voltar às conversas">
+        <span data-icone="voltar" aria-hidden="true"></span>
+      </button>
+      <div class="supervisao__titulos">
+        <h1 id="supervisao-titulo">Supervisão</h1>
+        <p>Mensagens editadas e apagadas, e conversas excluídas</p>
+      </div>
+      <button type="button" class="botao-contorno" id="botao-exportar">
+        <span data-icone="download" aria-hidden="true"></span>
+        <span>Exportar CSV</span>
+      </button>
+    </header>
+
+    <!-- Cartões com os totais (criados pelo JS). Clicar num cartão filtra a lista -->
+    <div class="supervisao__resumo" id="supervisao-resumo"></div>
+
+    <div class="supervisao__filtros">
+      <label class="campo-filtro">
+        <span>Atendente</span>
+        <select id="sup-atendente"></select>
+      </label>
+      <label class="campo-filtro">
+        <span>Ação</span>
+        <select id="sup-acao">
+          <option value="">Todas as ações</option>
+          <option value="edicao">Edições</option>
+          <option value="exclusao">Mensagens apagadas</option>
+          <option value="conversa">Conversas excluídas</option>
+        </select>
+      </label>
+      <label class="campo-filtro">
+        <span>Período</span>
+        <select id="sup-periodo">
+          <option value="tudo">Todo o período</option>
+          <option value="hoje">Hoje</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+        </select>
+      </label>
+      <label class="campo-filtro campo-filtro--busca">
+        <span>Buscar</span>
+        <input type="search" id="sup-busca" placeholder="Texto, conversa ou atendente" autocomplete="off">
+      </label>
+    </div>
+
+    <!-- <ol>: é uma lista ORDENADA (da ação mais recente para a mais antiga) -->
+    <ol class="supervisao__lista" id="supervisao-lista" aria-live="polite"></ol>
+
+    <p class="supervisao__nota">
+      Protótipo: os registros ficam salvos só neste navegador. Na versão com servidor,
+      eles serão gravados num banco de dados onde ninguém consegue alterar ou apagar.
+    </p>
+  </section>
 
   <div class="aviso" id="aviso" role="status" hidden></div>
 

@@ -146,8 +146,9 @@ input {
   color: inherit;
 }
 
-ul {
-  list-style: none;
+ul,
+ol {
+  list-style: none; /* sem bolinhas nem números: cada lista desenha o próprio visual */
 }
 
 /* Ícones SVG: por padrão, do tamanho da letra ao redor */
@@ -1828,4 +1829,420 @@ kbd {
 .etiquetas__editar .icone {
   width: 16px;
   height: 16px;
+}
+
+/* =========================================================
+   13. PAINEL DE SUPERVISÃO
+   ========================================================= */
+
+/* Botão no topo (só aparece para supervisão e diretoria) */
+.botao-supervisao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--texto-topo) 30%, transparent);
+  border-radius: 17px;
+  color: var(--texto-topo);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.botao-supervisao:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.botao-supervisao .icone {
+  width: 18px;
+  height: 18px;
+}
+
+/* Mensagem apagada: o conteúdo original (só supervisão vê) */
+.mensagem__original {
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--alerta);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--alerta) 10%, transparent);
+  font-size: 13px;
+  color: var(--texto-suave);
+  text-decoration: line-through;
+}
+
+/* ----- A tela do painel ----- */
+.supervisao {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto; /* o painel rola inteiro; o topo da página fica parado */
+  padding: 24px max(16px, calc((100% - 960px) / 2)); /* conteúdo centralizado até 960px */
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  background: var(--fundo-app);
+}
+
+.supervisao__topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.supervisao__titulos {
+  flex: 1;
+  min-width: 0;
+}
+
+.supervisao__titulos h1 {
+  font-size: 22px;
+}
+
+.supervisao__titulos p {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--texto-suave);
+}
+
+.supervisao__voltar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.supervisao__voltar:hover {
+  background: var(--fundo-hover);
+}
+
+.supervisao__voltar .icone {
+  width: 22px;
+  height: 22px;
+}
+
+/* Botão secundário: só contorno */
+.botao-contorno {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--borda);
+  border-radius: 19px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.botao-contorno:hover {
+  background: var(--fundo-hover);
+}
+
+.botao-contorno .icone {
+  width: 18px;
+  height: 18px;
+}
+
+/* ----- Cartões de resumo ----- */
+.supervisao__resumo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* três colunas do mesmo tamanho */
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.resumo-cartao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--cor-acao);
+  border-radius: var(--raio);
+  background: var(--fundo-painel);
+  text-align: left;
+}
+
+.resumo-cartao:hover {
+  background: var(--fundo-hover);
+}
+
+/* Cartão "ligado" como filtro */
+.resumo-cartao[aria-pressed="true"] {
+  border-color: var(--cor-acao);
+  background: color-mix(in srgb, var(--cor-acao) 10%, var(--fundo-painel));
+}
+
+.resumo-cartao__numero {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.resumo-cartao__rotulo {
+  font-size: 13px;
+  color: var(--texto-suave);
+}
+
+/* Uma cor por tipo de ação, usada no cartão e na borda do registro */
+.resumo-cartao--edicao,
+.registro--edicao { --cor-acao: var(--azul-lido); }
+.resumo-cartao--exclusao,
+.registro--exclusao { --cor-acao: var(--alerta); }
+.resumo-cartao--conversa,
+.registro--conversa { --cor-acao: #e0a030; }
+
+/* ----- Filtros ----- */
+.supervisao__filtros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.5fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.campo-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.campo-filtro span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.campo-filtro select,
+.campo-filtro input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--fundo-painel);
+  color: var(--texto);
+}
+
+.campo-filtro select:focus,
+.campo-filtro input:focus {
+  outline: none;
+  border-color: var(--destaque);
+}
+
+/* ----- Lista de registros ----- */
+.supervisao__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.registro {
+  padding: 14px 16px;
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--cor-acao);
+  border-radius: var(--raio);
+  background: var(--fundo-painel);
+}
+
+.registro__topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.registro__avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.registro__frase {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.registro__papel {
+  margin: 0 4px 0 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--fundo-hover);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.registro__papel:empty {
+  display: none;
+}
+
+.registro__quando {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--texto-suave);
+}
+
+.registro__onde {
+  margin: 6px 0 10px 42px; /* alinha com o texto, depois do avatar */
+  font-size: 13px;
+  color: var(--texto-suave);
+}
+
+.registro__link {
+  color: var(--texto);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.registro__link:hover {
+  color: var(--destaque-forte);
+}
+
+.registro__diff,
+.registro__apagado,
+.registro__copia {
+  margin-left: 42px;
+}
+
+/* Antes e depois lado a lado */
+.registro__diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.registro__antes,
+.registro__depois,
+.registro__apagado {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.registro__antes,
+.registro__apagado {
+  background: color-mix(in srgb, var(--alerta) 10%, transparent);
+}
+
+.registro__depois {
+  background: color-mix(in srgb, var(--sucesso) 12%, transparent);
+}
+
+.registro__rotulo {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--texto-suave);
+}
+
+/* <del> já vem riscado e <ins> sublinhado: deixamos só o risco */
+.registro__antes del {
+  text-decoration-color: var(--alerta);
+}
+
+.registro__depois ins {
+  text-decoration: none;
+}
+
+/* Cópia da conversa excluída (abre e fecha) */
+.registro__copia summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.registro__copia ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--fundo-hover);
+  font-size: 13px;
+}
+
+.registro__copia li {
+  display: flex;
+  flex-direction: column;
+}
+
+.registro__copia-quem {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.supervisao__nota {
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+/* ----- Painel no celular ----- */
+@media (max-width: 768px) {
+  .supervisao {
+    padding: 16px;
+  }
+
+  .botao-supervisao__texto {
+    display: none; /* no topo só cabe o ícone */
+  }
+
+  .botao-supervisao {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .supervisao__topo {
+    flex-wrap: wrap;
+  }
+
+  .supervisao__resumo {
+    gap: 8px;
+  }
+
+  .resumo-cartao {
+    padding: 10px 12px;
+  }
+
+  .resumo-cartao__numero {
+    font-size: 22px;
+  }
+
+  .supervisao__filtros {
+    grid-template-columns: 1fr 1fr; /* dois por linha */
+  }
+
+  .campo-filtro--busca {
+    grid-column: 1 / -1; /* a busca ocupa a linha inteira */
+  }
+
+  /* Antes e depois, um embaixo do outro; sem o recuo do avatar */
+  .registro__diff {
+    grid-template-columns: 1fr;
+  }
+
+  .registro__onde,
+  .registro__diff,
+  .registro__apagado,
+  .registro__copia {
+    margin-left: 0;
+  }
+
+  .registro__topo {
+    flex-wrap: wrap;
+  }
+
+  .registro__quando {
+    width: 100%;
+    padding-left: 42px;
+  }
 }

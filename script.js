@@ -29,6 +29,7 @@ const estado = {
   editandoMensagemId: null, // mensagem sendo editada no campo de envio
   textoAntesDaEdicao: "", // o que estava no campo antes de começar a editar
   apagandoMensagemId: null, // mensagem esperando confirmação para apagar
+  auditoria: [], // registro de edições e exclusões (só supervisão e diretoria veem)
 };
 
 /* =========================================================
@@ -168,6 +169,8 @@ const ICONES = {
   lixeira: '<path d="M4 6.5h16M9.5 6.5v-2h5v2M6.5 6.5l1 13a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-13M10 10.5v6M14 10.5v6"/>',
   copiar: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h3.5"/>',
   frasco: '<path d="M9.5 3.5h5M10.5 3.5v6L5 18.5a1.5 1.5 0 0 0 1.3 2.2h11.4a1.5 1.5 0 0 0 1.3-2.2L13.5 9.5v-6M7.5 14.5h9"/>',
+  escudo: '<path d="M12 3.5 5 6v5.5c0 4.3 3 7.6 7 9 4-1.4 7-4.7 7-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
 };
@@ -715,6 +718,8 @@ function atualizarResumoVazio(totalNaoLidas) {
 function atualizarTela() {
   renderizarLista();
   atualizarContadores();
+  // Painel aberto? Atualiza também (ex.: "Restaurar dados de exemplo")
+  if (!elPainelSupervisao.hidden) renderizarSupervisao();
   salvarDados(); // quase toda mudança passa por aqui: é o lugar ideal para salvar
 }
 
@@ -891,6 +896,10 @@ function criarMensagem(msg, conversa) {
         ? "Você apagou esta mensagem"
         : `Mensagem apagada por ${buscarAtendente(msg.apagadaPor)?.nome || "Equipe"}`;
     balao.append(criarElemento("div", "mensagem__texto", `🚫 ${quem}`));
+    // Supervisão e diretoria veem o que foi apagado (atendentes, não)
+    if (podeVerAuditoria()) {
+      balao.append(criarElemento("div", "mensagem__original", conteudoParaRegistro(msg)));
+    }
     const rodapeApagada = criarElemento("div", "mensagem__rodape");
     rodapeApagada.append(criarElemento("span", "mensagem__hora", formatarHoraMensagem(msg.horario)));
     balao.append(rodapeApagada);
@@ -1265,6 +1274,8 @@ document.addEventListener("keydown", (evento) => {
     elBotaoMenu.focus();
   } else if (!elPainelDados.hidden) {
     fecharPainelDados();
+  } else if (!elPainelSupervisao.hidden && podeFecharComEsc()) {
+    fecharPainelSupervisao();
   } else if (estado.conversaAbertaId && podeFecharComEsc()) {
     // Nada mais aberto por cima: fecha a conversa
     const id = estado.conversaAbertaId;
@@ -1356,6 +1367,26 @@ function pedirExclusao(conversa) {
 }
 
 function excluirConversa(id) {
+  /* Excluir a conversa inteira apagaria todas as mensagens de uma vez.
+     Sem registro, seria um jeito de "esconder" qualquer coisa da supervisão.
+     Por isso guardamos uma cópia em texto (sem os arquivos de áudio) */
+  const conversa = buscarConversa(id);
+  if (conversa) {
+    const copia = conversa.mensagens
+      .filter((m) => m.tipo !== "sistema")
+      .map((m) => ({
+        quem: m.tipo === "nota" ? `📝 ${buscarAtendente(m.autor)?.nome || "Equipe"}` : nomeDoAutor(m, conversa),
+        quando: m.horario,
+        texto: conteudoParaRegistro(m) + (m.apagada ? " (já estava apagada)" : ""),
+      }));
+    registrarAuditoria({
+      tipo: "conversa",
+      conversaId: id,
+      conversaNome: nomeDaConversa(conversa),
+      mensagens: copia,
+    });
+  }
+
   if (id === estado.conversaAbertaId) fecharConversa();
   // filter devolve um array novo SEM a conversa excluída
   estado.conversas = estado.conversas.filter((c) => c.id !== id);
@@ -1975,7 +2006,8 @@ function abrirDialogoTransferir() {
   elListaTransferir.innerHTML = "";
 
   estado.atendentes
-    .filter((a) => a.id !== conversa.atendenteId)
+    // A diretoria acompanha pelo painel, mas não recebe conversas
+    .filter((a) => a.id !== conversa.atendenteId && a.papel !== "diretoria")
     .forEach((atendente) => {
       const botao = criarElemento("button");
       botao.type = "submit";
@@ -2068,6 +2100,8 @@ function atualizarTopoAtendente() {
   elAtendenteNome.textContent = nome;
   elAtendenteAvatar.textContent = iniciais(nome);
   pintarAvatar(elAtendenteAvatar, nome); // trocar de atendente troca a cor também
+  // O botão do painel só existe para supervisão e diretoria
+  document.getElementById("botao-supervisao").hidden = !podeVerAuditoria();
 }
 
 function abrirMenuAtendente() {
@@ -2078,7 +2112,10 @@ function abrirMenuAtendente() {
     const li = criarElemento("li");
     li.setAttribute("role", "none");
     const atual = atendente.id === estado.atendenteLogadoId;
-    const botao = criarElemento("button", "", atual ? `✓ ${atendente.nome}` : atendente.nome);
+    // Mostra o papel de quem não é atendente: "Beatriz · Supervisão"
+    const papel = atendente.papel && atendente.papel !== "atendente" ? ` · ${PAPEIS[atendente.papel]}` : "";
+    const rotulo = `${atendente.nome}${papel}`;
+    const botao = criarElemento("button", "", atual ? `✓ ${rotulo}` : rotulo);
     botao.type = "button";
     botao.setAttribute("role", "menuitem");
     botao.dataset.atendenteId = atendente.id;
@@ -2110,6 +2147,8 @@ function trocarAtendente(id) {
   if (id === estado.atendenteLogadoId) return;
   estado.atendenteLogadoId = id;
   atualizarTopoAtendente();
+  // Trocou para alguém sem permissão com o painel aberto? Fecha o painel
+  if (!podeVerAuditoria()) fecharPainelSupervisao();
   redesenharTudo(); // "Você" muda de pessoa, a faixa e o filtro "Minhas" também
   mostrarAviso(`Agora você está como ${nomeLogado()}`);
 }
@@ -2490,8 +2529,9 @@ function podeApagar(msg) {
 // "editada" ao lado da hora; o title mostra o texto original ao passar o mouse
 function criarMarcaEditada(msg) {
   const marca = criarElemento("span", "mensagem__editada", "editada");
+  // O texto original aparece ao passar o mouse, mas só para supervisão e diretoria
   const original = msg.versoesAnteriores?.[0];
-  if (original) marca.title = `Original: ${original}`;
+  if (original && podeVerAuditoria()) marca.title = `Original: ${original}`;
   return marca;
 }
 
@@ -2567,6 +2607,17 @@ function salvarEdicaoMensagem(novoTexto) {
   }
 
   if (novoTexto !== msg.texto) {
+    const conversa = conversaAberta();
+    registrarAuditoria({
+      tipo: "edicao",
+      conversaId: conversa.id,
+      conversaNome: nomeDaConversa(conversa),
+      mensagemId: msg.id,
+      tipoMensagem: msg.tipo,
+      antes: msg.texto,
+      depois: novoTexto,
+    });
+
     // Guarda o histórico: a versão anterior não se perde
     msg.versoesAnteriores = [...(msg.versoesAnteriores || []), msg.texto];
     msg.texto = novoTexto;
@@ -2594,6 +2645,16 @@ function pedirApagarMensagem(id) {
 function apagarMensagem(id) {
   const msg = buscarMensagem(id);
   if (!msg) return;
+
+  const conversa = conversaAberta();
+  registrarAuditoria({
+    tipo: "exclusao",
+    conversaId: conversa.id,
+    conversaNome: nomeDaConversa(conversa),
+    mensagemId: msg.id,
+    tipoMensagem: msg.tipo,
+    antes: conteudoParaRegistro(msg),
+  });
 
   // Soft delete: marca como apagada em vez de remover do array.
   // Assim citações e o histórico continuam fazendo sentido
@@ -3107,6 +3168,81 @@ aplicarTema(temaAtual());
 definirModoNota(false);
 
 /* =========================================================
+   AUDITORIA: quem editou ou apagou o quê, e quando
+   Um registro SEPARADO das mensagens ("audit log"). Ele só cresce:
+   nenhuma função do app altera ou apaga um registro depois de criado
+   ========================================================= */
+const PAPEIS = {
+  atendente: "Atendente",
+  supervisor: "Supervisão",
+  diretoria: "Diretoria",
+};
+
+function papelDe(atendenteId) {
+  return buscarAtendente(atendenteId)?.papel || "atendente";
+}
+
+// Quem pode ver o painel e o conteúdo original de mensagens editadas e apagadas
+function podeVerAuditoria() {
+  return ["supervisor", "diretoria"].includes(papelDe(estado.atendenteLogadoId));
+}
+
+/* Guarda o conteúdo como TEXTO. Áudio vira uma descrição: o arquivo em si
+   continua na mensagem (soft delete), mas não precisa ser copiado para cá */
+function conteudoParaRegistro(msg) {
+  if (msg.tipo === "audio") return `🎤 Áudio de ${formatarDuracao(msg.duracao)}`;
+  return msg.texto;
+}
+
+function registrarAuditoria(dados) {
+  estado.auditoria.push({
+    id: `aud${Date.now()}`,
+    autorId: estado.atendenteLogadoId,
+    quando: new Date().toISOString(),
+    ...dados, // tipo, conversa, mensagem, antes, depois...
+  });
+}
+
+/* Migração: monta registros a partir das mensagens, para dados salvos
+   antes do painel existir. As mensagens já guardavam quase tudo:
+   quem apagou, quando, e as versões anteriores de quem editou */
+function reconstruirAuditoria(conversas) {
+  const registros = [];
+  conversas.forEach((conversa) => {
+    const conversaNome = nomeDaConversa(conversa);
+    conversa.mensagens.forEach((msg) => {
+      const base = { conversaId: conversa.id, conversaNome, mensagemId: msg.id, tipoMensagem: msg.tipo };
+
+      // Cada versão antiga vira uma edição: antes = versão, depois = a seguinte
+      const versoes = [...(msg.versoesAnteriores || []), msg.texto];
+      for (let i = 0; i < versoes.length - 1; i++) {
+        registros.push({
+          ...base,
+          id: `aud-${msg.id}-e${i}`,
+          tipo: "edicao",
+          autorId: msg.autor,
+          quando: msg.editadaEm || msg.horario, // a hora exata das edições antigas se perdeu
+          antes: versoes[i],
+          depois: versoes[i + 1],
+        });
+      }
+
+      if (msg.apagada) {
+        registros.push({
+          ...base,
+          id: `aud-${msg.id}-x`,
+          tipo: "exclusao",
+          autorId: msg.apagadaPor,
+          quando: msg.apagadaEm || msg.horario,
+          antes: conteudoParaRegistro(msg),
+        });
+      }
+    });
+  });
+  return registros;
+}
+
+/* =========================================================
    SALVAR NO NAVEGADOR (localStorage)
    O localStorage só guarda TEXTO. Por isso usamos JSON.stringify
    para salvar (objeto -> texto) e JSON.parse para ler (texto -> objeto)
@@ -3141,6 +3277,7 @@ function salvarAgora() {
     contatos: estado.contatos,
     etiquetas: estado.etiquetas,
     atendenteLogadoId: estado.atendenteLogadoId,
+    auditoria: estado.auditoria,
   };
 
   try {
@@ -3179,6 +3316,14 @@ function aplicarDadosSalvos(salvos, dados) {
   estado.conversas = salvos.conversas;
   estado.contatos = salvos.contatos || structuredClone(dados.contatos);
 
+  /* Quem usou o site ANTES do painel existir tem dados salvos sem "auditoria".
+     Em vez de perder o histórico, reconstruímos os registros a partir das
+     próprias mensagens (elas guardam quem apagou, quando, e as versões antigas).
+     Adaptar dados antigos a um formato novo se chama MIGRAÇÃO */
+  estado.auditoria = Array.isArray(salvos.auditoria)
+    ? salvos.auditoria
+    : reconstruirAuditoria(estado.conversas);
+
   /* Etiquetas: a LISTA vem do dados.json (se um dia surgir uma etiqueta nova
      no arquivo, ela aparece), mas o NOME das personalizáveis vem do que foi salvo */
   estado.etiquetas = structuredClone(dados.etiquetas || []).map((etiqueta) => {
@@ -3197,7 +3342,8 @@ function usarDadosDeExemplo(dados) {
   estado.contatos = structuredClone(dados.contatos);
   estado.etiquetas = structuredClone(dados.etiquetas || []);
   estado.atendenteLogadoId = "at1";
-  trazerDatasParaPerto(estado.conversas);
+  estado.auditoria = structuredClone(dados.auditoria || []);
+  trazerDatasParaPerto(estado.conversas, estado.auditoria);
 }
 
 /* As datas do dados.json são fixas (outubro de 2026). Com o tempo, os
@@ -3206,7 +3352,7 @@ function usarDadosDeExemplo(dados) {
    até a mensagem mais recente cair em hoje (ou ontem, se cair no futuro).
    A distância entre as mensagens continua igual, só muda o "quando".
    Só vale para os exemplos: dados salvos pelo usuário não são mexidos */
-function trazerDatasParaPerto(conversas) {
+function trazerDatasParaPerto(conversas, auditoria = []) {
   const campos = ["horario", "editadaEm", "apagadaEm"];
   const todasAsMensagens = conversas.flatMap((c) => c.mensagens);
   if (todasAsMensagens.length === 0) return;
@@ -3235,6 +3381,11 @@ function trazerDatasParaPerto(conversas) {
       });
     });
   });
+
+  // Os registros da auditoria andam junto, senão ficariam "antes" das mensagens
+  auditoria.forEach((registro) => {
+    registro.quando = empurrar(registro.quando);
+  });
 }
 
 /* ---------- Restaurar dados de exemplo ---------- */
@@ -3262,6 +3413,275 @@ document.getElementById("dialogo-restaurar").addEventListener("close", (evento) 
   const dialogo = evento.target;
   if (dialogo.returnValue === "restaurar") restaurarDadosDeExemplo();
   dialogo.returnValue = "";
+});
+
+/* =========================================================
+   PAINEL DE SUPERVISÃO
+   ========================================================= */
+const elPainelSupervisao = document.getElementById("painel-supervisao");
+const elBotaoSupervisao = document.getElementById("botao-supervisao");
+const elSupResumo = document.getElementById("supervisao-resumo");
+const elSupLista = document.getElementById("supervisao-lista");
+const elSupAtendente = document.getElementById("sup-atendente");
+const elSupAcao = document.getElementById("sup-acao");
+const elSupPeriodo = document.getElementById("sup-periodo");
+const elSupBusca = document.getElementById("sup-busca");
+
+const TIPOS_DE_ACAO = {
+  edicao: "Edições",
+  exclusao: "Mensagens apagadas",
+  conversa: "Conversas excluídas",
+};
+
+/* ---------- Abrir e fechar ---------- */
+function abrirPainelSupervisao() {
+  if (!podeVerAuditoria()) return; // proteção extra: o botão já fica escondido
+
+  // Lista de atendentes no filtro (refeita a cada abertura)
+  elSupAtendente.replaceChildren(new Option("Todos", ""));
+  estado.atendentes.forEach((a) => elSupAtendente.append(new Option(a.nome, a.id)));
+
+  elApp.hidden = true; // esconde as conversas...
+  elPainelSupervisao.hidden = false; // ...e mostra o painel no lugar
+  renderizarSupervisao();
+  document.getElementById("botao-fechar-supervisao").focus();
+}
+
+function fecharPainelSupervisao() {
+  if (elPainelSupervisao.hidden) return;
+  elPainelSupervisao.hidden = true;
+  elApp.hidden = false;
+}
+
+/* ---------- Filtros ---------- */
+function combinaComPeriodo(registro) {
+  const periodo = elSupPeriodo.value;
+  if (periodo === "tudo") return true;
+  const dias = diasAtras(new Date(registro.quando));
+  if (periodo === "hoje") return dias === 0;
+  return dias < Number(periodo); // "7" ou "30"
+}
+
+// Tudo o que a busca pode encontrar num registro, num texto só
+function textoPesquisavel(registro) {
+  const partes = [
+    registro.antes,
+    registro.depois,
+    registro.conversaNome,
+    buscarAtendente(registro.autorId)?.nome,
+    ...(registro.mensagens || []).map((m) => m.texto),
+  ];
+  return normalizar(partes.filter(Boolean).join(" "));
+}
+
+/* Separado em dois passos de propósito: os cartões do resumo contam
+   SEM o filtro de ação (senão, ao escolher "Edições", os outros
+   cartões mostrariam zero e perderiam a utilidade) */
+function registrosSemFiltroDeAcao() {
+  const atendente = elSupAtendente.value;
+  const termo = normalizar(elSupBusca.value);
+  return estado.auditoria.filter(
+    (r) =>
+      (!atendente || r.autorId === atendente) &&
+      combinaComPeriodo(r) &&
+      (!termo || textoPesquisavel(r).includes(termo))
+  );
+}
+
+function registrosFiltrados() {
+  const acao = elSupAcao.value;
+  return registrosSemFiltroDeAcao()
+    .filter((r) => !acao || r.tipo === acao)
+    .sort((a, b) => new Date(b.quando) - new Date(a.quando)); // mais recente primeiro
+}
+
+/* ---------- Desenhar ---------- */
+function renderizarResumo() {
+  const base = registrosSemFiltroDeAcao();
+  elSupResumo.innerHTML = "";
+
+  Object.entries(TIPOS_DE_ACAO).forEach(([tipo, rotulo]) => {
+    const total = base.filter((r) => r.tipo === tipo).length;
+    const cartao = criarElemento("button", `resumo-cartao resumo-cartao--${tipo}`);
+    cartao.type = "button";
+    cartao.dataset.tipo = tipo;
+    // aria-pressed: o leitor de tela anuncia se o cartão está "ligado" como filtro
+    cartao.setAttribute("aria-pressed", elSupAcao.value === tipo);
+    cartao.append(
+      criarElemento("span", "resumo-cartao__numero", total),
+      criarElemento("span", "resumo-cartao__rotulo", rotulo)
+    );
+    elSupResumo.append(cartao);
+  });
+}
+
+function descricaoDaAcao(registro) {
+  if (registro.tipo === "conversa") return "excluiu a conversa";
+  const oQue = registro.tipoMensagem === "nota" ? "uma nota interna" : registro.tipoMensagem === "audio" ? "um áudio" : "uma mensagem";
+  return registro.tipo === "edicao" ? `editou ${oQue}` : `apagou ${oQue}`;
+}
+
+function criarRegistro(registro) {
+  const autor = buscarAtendente(registro.autorId);
+  const nomeAutor = autor?.nome || "Atendente removido";
+  const li = criarElemento("li", `registro registro--${registro.tipo}`);
+
+  // Linha de cima: avatar, quem, o que fez, quando
+  const topo = criarElemento("div", "registro__topo");
+  const avatar = criarElemento("span", "avatar registro__avatar", iniciais(nomeAutor));
+  avatar.setAttribute("aria-hidden", "true");
+  pintarAvatar(avatar, nomeAutor);
+
+  const frase = criarElemento("p", "registro__frase");
+  frase.append(
+    criarElemento("strong", "", nomeAutor),
+    // O papel só aparece quando NÃO é atendente: "Beatriz [Supervisão] editou..."
+    criarElemento("span", "registro__papel", autor?.papel && autor.papel !== "atendente" ? PAPEIS[autor.papel] : ""),
+    document.createTextNode(` ${descricaoDaAcao(registro)}`)
+  );
+
+  const quando = criarElemento(
+    "time",
+    "registro__quando",
+    `${formatarDia(registro.quando)}, ${formatarHoraMensagem(registro.quando)}`
+  );
+  quando.dateTime = registro.quando; // <time datetime="...">: a data em formato de máquina
+  topo.append(avatar, frase, quando);
+  li.append(topo);
+
+  // Em qual conversa: vira um link se a conversa ainda existir
+  const ondeLinha = criarElemento("p", "registro__onde", "Conversa: ");
+  const existe = buscarConversa(registro.conversaId) && registro.tipo !== "conversa";
+  if (existe) {
+    const link = criarElemento("button", "registro__link", registro.conversaNome);
+    link.type = "button";
+    link.dataset.conversa = registro.conversaId;
+    if (registro.mensagemId) link.dataset.mensagem = registro.mensagemId;
+    ondeLinha.append(link);
+  } else {
+    ondeLinha.append(criarElemento("span", "", `${registro.conversaNome}${registro.tipo === "conversa" ? "" : " (excluída)"}`));
+  }
+  li.append(ondeLinha);
+
+  // O conteúdo, conforme o tipo
+  if (registro.tipo === "edicao") {
+    /* <del> e <ins> são as tags do HTML para "texto removido" e
+       "texto inserido": o significado está no próprio elemento */
+    const diff = criarElemento("div", "registro__diff");
+    const antes = criarElemento("div", "registro__antes");
+    antes.append(criarElemento("span", "registro__rotulo", "Antes"), criarElemento("del", "", registro.antes));
+    const depois = criarElemento("div", "registro__depois");
+    depois.append(criarElemento("span", "registro__rotulo", "Depois"), criarElemento("ins", "", registro.depois));
+    diff.append(antes, depois);
+    li.append(diff);
+  } else if (registro.tipo === "exclusao") {
+    const caixa = criarElemento("div", "registro__apagado");
+    caixa.append(criarElemento("span", "registro__rotulo", "Conteúdo apagado"), criarElemento("p", "", registro.antes));
+    li.append(caixa);
+  } else {
+    /* <details> + <summary>: um "abre e fecha" nativo do HTML, sem JavaScript.
+       A cópia da conversa pode ser longa, então começa fechada */
+    const detalhes = criarElemento("details", "registro__copia");
+    const qtd = registro.mensagens?.length || 0;
+    detalhes.append(criarElemento("summary", "", `Ver as ${qtd} ${qtd === 1 ? "mensagem" : "mensagens"} da conversa`));
+    const lista = criarElemento("ol");
+    (registro.mensagens || []).forEach((m) => {
+      const item = criarElemento("li");
+      item.append(
+        criarElemento("span", "registro__copia-quem", `${m.quem} · ${formatarDia(m.quando)}, ${formatarHoraMensagem(m.quando)}`),
+        criarElemento("span", "", m.texto)
+      );
+      lista.append(item);
+    });
+    detalhes.append(lista);
+    li.append(detalhes);
+  }
+  return li;
+}
+
+function renderizarSupervisao() {
+  renderizarResumo();
+  elSupLista.innerHTML = "";
+  const registros = registrosFiltrados();
+
+  if (registros.length === 0) {
+    const vazio = estado.auditoria.length === 0
+      ? "Nenhuma edição ou exclusão registrada até agora."
+      : "Nenhum registro com esses filtros.";
+    elSupLista.append(criarElemento("li", "lista-vazia", vazio));
+    return;
+  }
+  registros.forEach((r) => elSupLista.append(criarRegistro(r)));
+}
+
+/* ---------- Exportar CSV (abre no Excel ou no Google Planilhas) ---------- */
+function exportarCsv() {
+  const registros = registrosFiltrados(); // exporta o que está filtrado na tela
+  if (registros.length === 0) {
+    mostrarAviso("Nada para exportar com esses filtros");
+    return;
+  }
+
+  /* Cada valor vai entre aspas, e aspas DENTRO do texto viram aspas duplas.
+     Sem isso, uma mensagem com ; ou quebra de linha bagunçaria as colunas */
+  const celula = (valor) => `"${String(valor ?? "").replaceAll('"', '""')}"`;
+
+  const cabecalho = ["Data e hora", "Atendente", "Papel", "Ação", "Conversa", "Antes / conteúdo", "Depois"];
+  const linhas = registros.map((r) => {
+    const autor = buscarAtendente(r.autorId);
+    const conteudo = r.tipo === "conversa"
+      ? (r.mensagens || []).map((m) => `${m.quem}: ${m.texto}`).join(" | ")
+      : r.antes;
+    return [
+      new Date(r.quando).toLocaleString("pt-BR"),
+      autor?.nome,
+      PAPEIS[autor?.papel],
+      descricaoDaAcao(r),
+      r.conversaNome,
+      conteudo,
+      r.depois,
+    ].map(celula).join(";");
+  });
+
+  /* ";" separa as colunas: no Excel em português, a vírgula é o separador decimal.
+     "\uFEFF" (BOM) no começo avisa o Excel que o arquivo é UTF-8: sem ele,
+     "Ação" apareceria como "AÃ§Ã£o" */
+  const conteudoCsv = "\uFEFF" + [cabecalho.map(celula).join(";"), ...linhas].join("\r\n");
+
+  // Cria o arquivo na memória, um link invisível para ele, e "clica" no link
+  const arquivo = new Blob([conteudoCsv], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(arquivo);
+  link.download = `auditoria-espelho-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href); // libera a memória
+  mostrarAviso(`${registros.length} ${registros.length === 1 ? "registro exportado" : "registros exportados"}`);
+}
+
+/* ---------- Eventos ---------- */
+elBotaoSupervisao.addEventListener("click", abrirPainelSupervisao);
+document.getElementById("botao-fechar-supervisao").addEventListener("click", fecharPainelSupervisao);
+document.getElementById("botao-exportar").addEventListener("click", exportarCsv);
+
+// Qualquer filtro mudou: redesenha. "input" pega cada letra digitada na busca
+[elSupAtendente, elSupAcao, elSupPeriodo].forEach((el) => el.addEventListener("change", renderizarSupervisao));
+elSupBusca.addEventListener("input", renderizarSupervisao);
+
+// Clicar num cartão do resumo filtra por aquela ação (clicar de novo tira o filtro)
+elSupResumo.addEventListener("click", (evento) => {
+  const cartao = evento.target.closest(".resumo-cartao");
+  if (!cartao) return;
+  elSupAcao.value = elSupAcao.value === cartao.dataset.tipo ? "" : cartao.dataset.tipo;
+  renderizarSupervisao();
+});
+
+// Clicar no nome da conversa: volta para as conversas e mostra a mensagem
+elSupLista.addEventListener("click", (evento) => {
+  const link = evento.target.closest(".registro__link");
+  if (!link) return;
+  fecharPainelSupervisao();
+  abrirConversa(link.dataset.conversa);
+  if (link.dataset.mensagem) irParaMensagem(link.dataset.mensagem);
 });
 
 /* =========================================================
